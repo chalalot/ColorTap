@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jungle Safari: Animal Escape - Playable Ad</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8e6d0;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            -webkit-touch-callout: none;
+        }
+        .viewport-wrapper {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;  /* vertical center */
+            justify-content: center; /* horizontal center */
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-canvas {
+            transition: transform 3s ease;
+            will-change: transform;
+            transform-origin: top left;
+            background: #f8e6d0;
+            width: 90vmin;
+            aspect-ratio: 1;
+            max-width: 100vw;
+            max-height: 100vh;
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(25, 1fr);
+            grid-template-rows: repeat(25, 1fr);
+            gap: 0px;
+            box-sizing: border-box;
+        }
+        .block-moving-wrapper {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: auto;
+        }
+        @keyframes bounceGridHand {
+            0%   { transform: translateY(0); }
+            50%  { transform: translateY(-2vh); }
+            100% { transform: translateY(0); }
+        }
+
+        .hand-in-grid {
+            width: 90%;
+            height: 90%;
+            object-fit: contain;
+            justify-self: center;
+            align-self: center;
+            animation: bounceGridHand 1.2s infinite ease-in-out;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        .game-block {
+            position: relative;
+            width: 103%;
+            height: 108%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .game-block.moving {
+            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            z-index: 20;
+        }
+
+        .game-block.exiting {
+            transition: transform 1s ease-in-out;
+            z-index: 20;
+        }
+
+        .block-wrapper {
+            position: absolute;
+            width: calc(100% / 25); /* Based on 25x25 grid */
+            height: calc(100% / 25);
+            pointer-events: none; /* Allow block inside to be clickable */
+        }
+
+        .block-wrapper .game-block {
+            width: 100%;
+            height: 100%;
+            pointer-events: auto; /* Enable clicking */
+        }
+
+        .block-trail {
+            position: absolute;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+
+        @keyframes fadeOutTrail {
+            0% { opacity: 0.7; }
+            100% { opacity: 0; }
+        }
+        .block-trail.left::before,
+        .block-trail.left::after {
+            content: "";
+            position: absolute;
+            height: 1px;
+            width: 100%;
+            left: 0;
+            background: linear-gradient(to left,
+            rgba(128, 0, 128, 0),
+            rgba(0, 0, 255, 0.3),
+            rgba(0, 255, 0, 0.4),
+            rgba(255, 165, 0, 0.5),
+            rgba(255, 0, 0, 0.6)
+            );
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .block-trail.left::before { top: 0; }
+        .block-trail.left::after { bottom: 0; }
+
+        .block-trail.right::before,
+        .block-trail.right::after {
+            content: "";
+            position: absolute;
+            height: 1px;
+            width: 100%;
+            left: 0;
+            background: linear-gradient(to right,
+            rgba(128, 0, 128, 0),
+            rgba(0, 0, 255, 0.3),
+            rgba(0, 255, 0, 0.4),
+            rgba(255, 165, 0, 0.5),
+            rgba(255, 0, 0, 0.6)
+            );
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .block-trail.right::before { top: 0; }
+        .block-trail.right::after { bottom: 0; }
+
+        .block-trail.up::before,
+        .block-trail.up::after {
+            content: "";
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            top: 0;
+            background: linear-gradient(to top,
+            rgba(128, 0, 128, 0),
+            rgba(0, 0, 255, 0.3),
+            rgba(0, 255, 0, 0.4),
+            rgba(255, 165, 0, 0.5),
+            rgba(255, 0, 0, 0.6)
+            );
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .block-trail.up::before { left: 0; }
+        .block-trail.up::after { right: 0; }
+
+        .block-trail.down::before,
+        .block-trail.down::after {
+            content: "";
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            top: 0;
+            background: linear-gradient(to bottom,
+            rgba(128, 0, 128, 0),
+            rgba(0, 0, 255, 0.3),
+            rgba(0, 255, 0, 0.4),
+            rgba(255, 165, 0, 0.5),
+            rgba(255, 0, 0, 0.6)
+            );
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .block-trail.down::before { left: 0; }
+        .block-trail.down::after { right: 0; }
+
+        .block-spot-dot {
+            position: absolute;
+            width: 30%;
+            height: 30%;
+            background: white;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+            }
+
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .preloader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fde0bf;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 100;
+        }
+
+        .game-icon {
+            width: 120px;
+            height: 120px;
+            background: #fff;
+            border-radius: 25px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #fff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .game-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .loading-text {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: auto;
+        }
+        @keyframes bounceUpDown {
+            0%   { transform: translate(-50%, 0); }
+            50%  { transform: translate(-50%, -3vh); }
+            100% { transform: translate(-50%, 0); }
+        }
+
+        .hand-pointer {
+            width: 10vmin; /* scales with screen size */
+            position: absolute;
+            top: 50vh; /* middle-lower part of screen */
+            left: 55%;
+            transform: translate(-50%, 0);
+            animation: bounceUpDown 2s infinite ease-in-out;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ui-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+
+        .ui-button:active {
+            transform: scale(0.95);
+        }
+
+        .end-card {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 50;
+        }
+
+        .end-card.show {
+            display: flex;
+        }
+
+        .app-logo {
+            width: 100px;
+            height: 100px;
+            background: #fff;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        .level-complete {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+
+        .cta-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+            transition: transform 0.2s ease;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .cta-button:active {
+            transform: translateY(0);
+        }
+
+        /* Shape Selection Menu */
+        .shape-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/bg.png') no-repeat center center;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .menu-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .menu-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .menu-header p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 0;
+        }
+        .start-button {
+            width: 30vmin;
+            max-width: 80vw;
+            cursor: pointer;
+            position: absolute;
+            top: 50vh;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            transition: transform 0.2s ease;
+        }
+
+        .shape-grid {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .shape-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .shape-item:hover {
+            transform: scale(1.1);
+        }
+
+        .shape-item:active {
+            transform: scale(0.95);
+        }
+
+        .shape-silhouette {
+            width: 100px;
+            height: 100px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            position: relative;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .shape-item:hover .shape-silhouette {
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
+        }
+
+        .circle-shape {
+            border-radius: 50%;
+        }
+
+        .rectangle-shape {
+            border-radius: 8px;
+        }
+
+        .triangle-shape {
+            width: 0;
+            height: 0;
+            border-left: 50px solid transparent;
+            border-right: 50px solid transparent;
+            border-bottom: 87px solid #000;
+            border-radius: 0;
+            background: none;
+        }
+
+        .question-mark {
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .triangle-shape .question-mark {
+            position: absolute;
+            top: 45px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .shape-label {
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        @media (max-width: 480px) {
+            .game-title {
+                font-size: 20px;
+            }
+            
+            .loading-text {
+                font-size: 14px;
+            }
+            
+            .level-complete {
+                font-size: 28px;
+            }
+            
+            .cta-button {
+                padding: 12px 30px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Preloader -->
+        <div class="preloader" id="preloader">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <!-- Game Board -->
+         <div class="viewport-wrapper">
+            <div class="game-canvas" id="gameBoard"></div>
+        </div>
+        <div class="shape-menu" id="shapeMenu">
+            <!-- Image-based start button -->
+            <img src="assets/characters.png" 
+                alt="Start Game" 
+                id="startGameButton" 
+                class="start-button" />
+
+            <img src="assets/hand.png" alt="Tap here" class="hand-pointer" />
+        </div>
+        <!-- UI Overlay -->
+        <div class="ui-overlay">
+            <div class="game-ui" id="gameUI" style="display: none;">
+
+            </div>
+        </div>
+
+        <!-- End Card -->
+        <div class="end-card" id="endCard">
+            <div class="app-logo">🦁</div>
+            <div class="level-complete">All Animals Escaped!</div>
+            <div style="text-align: center;">
+                <div style="font-size: 18px; margin-bottom: 10px;">Ready for more jungle adventures?</div>
+                <a href="https://play.google.com/store/apps/details?id=com.colortap.unblockpuzzle" 
+                   class="cta-button" target="_blank">Download Now</a>
+                <button class="cta-button" id="menuFromEndBtn" style="background: linear-gradient(45deg, #8B4513, #CD853F); margin-left: 10px;">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state and configuration
+        const GAME_STATES = {
+            LOADING: 'loading',
+            MENU: 'menu',
+            PLAYING: 'playing',
+            COMPLETED: 'completed'
+        };
+
+        class Game {
+            constructor() {
+                this.gameBoard = document.getElementById('gameBoard');
+                this.state = GAME_STATES.LOADING;
+                
+                // Game configuration
+                this.gridSize = 25;
+                
+                // Game data
+                this.blocks = [];
+                
+                // Interaction state
+                this.clickedBlock = null;
+                
+                // Animation state
+                this.muted = false;
+                
+                // Direction vectors
+                this.directions = {
+                    'up': { x: 0, y: -1 },
+                    'down': { x: 0, y: 1 },
+                    'left': { x: -1, y: 0 },
+                    'right': { x: 1, y: 0 }
+                };
+                
+                this.selectedShape = null;
+                this.initializeGame();
+                this.setupEventListeners();
+                this.startPreloader();
+            }
+
+
+            initializeGame() {
+                this.generateFixedPuzzle();
+            }
+            generateFixedPuzzle() {
+                const colors = ['#FFD699', '#FFCC66', '#FFB347', '#FFA500', '#E69500'];
+                this.blocks = [];
+                const layout = [
+                    { x: 1, y: 11, direction: 'right' },
+                    { x: 1, y: 12, direction: 'left' },
+                    { x: 1, y: 13, direction: 'right' },
+                    { x: 2, y: 11, direction: 'up' },
+                    { x: 2, y: 12, direction: 'left' },
+                    { x: 2, y: 13, direction: 'right' },
+                    { x: 2, y: 14, direction: 'up' },
+                    { x: 2, y: 15, direction: 'down' },
+                    { x: 2, y: 19, direction: 'up' },
+                    { x: 2, y: 20, direction: 'up' },
+                    { x: 3, y: 11, direction: 'left' },
+                    { x: 3, y: 12, direction: 'left' },
+                    { x: 3, y: 13, direction: 'down' },
+                    { x: 3, y: 14, direction: 'left' },
+                    { x: 3, y: 15, direction: 'down' },
+                    { x: 3, y: 16, direction: 'down' },
+                    { x: 3, y: 18, direction: 'up' },
+                    { x: 3, y: 19, direction: 'left' },
+                    { x: 3, y: 20, direction: 'down' },
+                    { x: 3, y: 21, direction: 'down' },
+                    { x: 3, y: 22, direction: 'left' },
+                    { x: 4, y: 11, direction: 'down' },
+                    { x: 4, y: 12, direction: 'left' },
+                    { x: 4, y: 13, direction: 'right' },
+                    { x: 4, y: 14, direction: 'down' },
+                    { x: 4, y: 15, direction: 'down' },
+                    { x: 4, y: 16, direction: 'right' },
+                    { x: 4, y: 17, direction: 'down' },
+                    { x: 4, y: 18, direction: 'up' },
+                    { x: 4, y: 19, direction: 'left' },
+                    { x: 4, y: 20, direction: 'left' },
+                    { x: 4, y: 21, direction: 'right' },
+                    { x: 4, y: 22, direction: 'down' },
+                    { x: 4, y: 23, direction: 'right' },
+                    { x: 5, y: 10, direction: 'up' },
+                    { x: 5, y: 14, direction: 'right' },
+                    { x: 5, y: 15, direction: 'down' },
+                    { x: 5, y: 16, direction: 'left' },
+                    { x: 5, y: 17, direction: 'down' },
+                    { x: 5, y: 19, direction: 'left' },
+                    { x: 5, y: 20, direction: 'right' },
+                    { x: 5, y: 21, direction: 'up' },
+                    { x: 5, y: 22, direction: 'right' },
+                    { x: 5, y: 23, direction: 'right' },
+                    { x: 5, y: 24, direction: 'left' },
+                    { x: 6, y: 6, direction: 'down' },
+                    { x: 6, y: 7, direction: 'right' },
+                    { x: 6, y: 8, direction: 'left' },
+                    { x: 6, y: 9, direction: 'right' },
+                    { x: 6, y: 10, direction: 'down' },
+                    { x: 6, y: 11, direction: 'right' },
+                    { x: 6, y: 13, direction: 'left' },
+                    { x: 6, y: 14, direction: 'down' },
+                    { x: 6, y: 15, direction: 'down' },
+                    { x: 6, y: 16, direction: 'up' },
+                    { x: 6, y: 20, direction: 'down' },
+                    { x: 6, y: 21, direction: 'down' },
+                    { x: 6, y: 22, direction: 'left' },
+                    { x: 6, y: 23, direction: 'right' },
+                    { x: 6, y: 24, direction: 'down' },
+                    { x: 7, y: 5, direction: 'up' },
+                    { x: 7, y: 6, direction: 'left' },
+                    { x: 7, y: 7, direction: 'up' },
+                    { x: 7, y: 8, direction: 'down' },
+                    { x: 7, y: 9, direction: 'left' },
+                    { x: 7, y: 10, direction: 'left' },
+                    { x: 7, y: 11, direction: 'up' },
+                    { x: 7, y: 12, direction: 'right' },
+                    { x: 7, y: 13, direction: 'up' },
+                    { x: 7, y: 14, direction: 'left' },
+                    { x: 7, y: 15, direction: 'up' },
+                    { x: 7, y: 16, direction: 'right' },
+                    { x: 7, y: 17, direction: 'up' },
+                    { x: 7, y: 21, direction: 'left' },
+                    { x: 7, y: 22, direction: 'left' },
+                    { x: 7, y: 23, direction: 'up' },
+                    { x: 7, y: 24, direction: 'down' },
+                    { x: 8, y: 5, direction: 'up' },
+                    { x: 8, y: 6, direction: 'right' },
+                    { x: 8, y: 7, direction: 'up' },
+                    { x: 8, y: 8, direction: 'down' },
+                    { x: 8, y: 9, direction: 'left' },
+                    { x: 8, y: 10, direction: 'left' },
+                    { x: 8, y: 11, direction: 'right' },
+                    { x: 8, y: 12, direction: 'down' },
+                    { x: 8, y: 13, direction: 'left' },
+                    { x: 8, y: 14, direction: 'left' },
+                    { x: 8, y: 15, direction: 'left' },
+                    { x: 8, y: 16, direction: 'right' },
+                    { x: 8, y: 17, direction: 'down' },
+                    { x: 8, y: 18, direction: 'left' },
+                    { x: 8, y: 19, direction: 'up' },
+                    { x: 8, y: 20, direction: 'right' },
+                    { x: 8, y: 21, direction: 'right' },
+                    { x: 9, y: 2, direction: 'left' },
+                    { x: 9, y: 3, direction: 'left' },
+                    { x: 9, y: 4, direction: 'up' },
+                    { x: 9, y: 5, direction: 'up' },
+                    { x: 9, y: 6, direction: 'up' },
+                    { x: 9, y: 7, direction: 'up' },
+                    { x: 9, y: 8, direction: 'left' },
+                    { x: 9, y: 9, direction: 'down' },
+                    { x: 9, y: 10, direction: 'right' },
+                    { x: 9, y: 11, direction: 'up' },
+                    { x: 9, y: 12, direction: 'down' },
+                    { x: 9, y: 13, direction: 'up' },
+                    { x: 9, y: 14, direction: 'up' },
+                    { x: 9, y: 15, direction: 'right' },
+                    { x: 9, y: 16, direction: 'right' },
+                    { x: 9, y: 17, direction: 'down' },
+                    { x: 9, y: 18, direction: 'up' },
+                    { x: 9, y: 19, direction: 'left' },
+                    { x: 9, y: 20, direction: 'down' },
+                    { x: 9, y: 21, direction: 'down' },
+                    { x: 10, y: 1, direction: 'up' },
+                    { x: 10, y: 2, direction: 'down' },
+                    { x: 10, y: 3, direction: 'right' },
+                    { x: 10, y: 4, direction: 'right' },
+                    { x: 10, y: 5, direction: 'right' },
+                    { x: 10, y: 6, direction: 'up' },
+                    { x: 10, y: 7, direction: 'up' },
+                    { x: 10, y: 8, direction: 'left' },
+                    { x: 10, y: 9, direction: 'left' },
+                    { x: 10, y: 10, direction: 'up' },
+                    { x: 10, y: 11, direction: 'left' },
+                    { x: 10, y: 12, direction: 'right' },
+                    { x: 10, y: 13, direction: 'down' },
+                    { x: 10, y: 14, direction: 'right' },
+                    { x: 10, y: 15, direction: 'down' },
+                    { x: 10, y: 16, direction: 'right' },
+                    { x: 10, y: 17, direction: 'up' },
+                    { x: 10, y: 18, direction: 'up' },
+                    { x: 10, y: 19, direction: 'left' },
+                    { x: 10, y: 20, direction: 'left' },
+                    { x: 10, y: 21, direction: 'up' },
+                    { x: 11, y: 2, direction: 'up' },
+                    { x: 11, y: 3, direction: 'left' },
+                    { x: 11, y: 4, direction: 'right' },
+                    { x: 11, y: 5, direction: 'left' },
+                    { x: 11, y: 6, direction: 'up' },
+                    { x: 11, y: 7, direction: 'down' },
+                    { x: 11, y: 8, direction: 'up' },
+                    { x: 11, y: 9, direction: 'up' },
+                    { x: 11, y: 10, direction: 'left' },
+                    { x: 11, y: 11, direction: 'up' },
+                    { x: 11, y: 12, direction: 'right' },
+                    { x: 11, y: 13, direction: 'up' },
+                    { x: 11, y: 14, direction: 'right' },
+                    { x: 11, y: 15, direction: 'down' },
+                    { x: 11, y: 16, direction: 'up' },
+                    { x: 11, y: 17, direction: 'up' },
+                    { x: 11, y: 18, direction: 'left' },
+                    { x: 11, y: 19, direction: 'left' },
+                    { x: 11, y: 20, direction: 'left' },
+                    { x: 11, y: 21, direction: 'left' },
+                    { x: 15, y: 26, direction: 'up' },
+                    { x: 18, y: 26, direction: 'left' },
+                    { x: 18, y: 29, direction: 'left' },
+                    { x: 21, y: 26, direction: 'right' },
+                    { x: 21, y: 29, direction: 'right' },
+                ];
+                for (let i = 0; i < layout.length; i++) {
+                    const { x, y, direction } = layout[i];
+                    this.blocks.push({
+                        id: i + 1,
+                        x,
+                        y,
+                        direction,
+                        color: colors[i % colors.length]
+                    });
+                }
+            }
+
+
+            canBlockMove(block) {
+                const direction = this.directions[block.direction];
+                let scanX = block.x;
+                let scanY = block.y;
+                
+                // Check if path to edge is clear
+                while (true) {
+                    const nextX = scanX + direction.x;
+                    const nextY = scanY + direction.y;
+                    
+                    // If we can reach the edge, block can move
+                    if (nextX < 0 || nextX >= this.gridSize || nextY < 0 || nextY >= this.gridSize) {
+                        return true;
+                    }
+                    
+                    // If there's another block in the way, can't move
+                    const blockAtPosition = this.blocks.find(b => b.id !== block.id && b.x === nextX && b.y === nextY);
+                    if (blockAtPosition) {
+                        return false;
+                    }
+                    
+                    scanX = nextX;
+                    scanY = nextY;
+                }
+            }
+
+            setupEventListeners() {
+                const btn = document.getElementById('startGameButton');
+                if (btn) {
+                    btn.addEventListener('click', () => this.startGame());
+                }
+
+                // Prevent context menu on game board
+                this.gameBoard.addEventListener('contextmenu', e => e.preventDefault());
+            }
+
+            startPreloader() {
+                const progressFill = document.getElementById('progressFill');
+                let progress = 0;
+                
+                const updateProgress = () => {
+                    progress += Math.random() * 20;
+                    if (progress > 100) progress = 100;
+                    
+                    progressFill.style.width = progress + '%';
+                    
+                    if (progress >= 100) {
+                        setTimeout(() => {
+                            document.getElementById('preloader').style.display = 'none';
+                            this.showShapeMenu();
+                        }, 500);
+                    } else {
+                        setTimeout(updateProgress, 100 + Math.random() * 200);
+                    }
+                };
+                
+                setTimeout(updateProgress, 500);
+            }
+
+            showShapeMenu() {
+                this.state = GAME_STATES.MENU;
+                document.getElementById('shapeMenu').style.display = 'flex';
+                document.getElementById('gameUI').style.display = 'none';
+            }
+
+            startGame(shape) {
+                this.selectedShape = shape;
+                document.getElementById('shapeMenu').style.display = 'none';
+                document.getElementById('gameUI').style.display = 'flex';
+                this.state = GAME_STATES.PLAYING;
+                const hand = document.createElement('img');
+                hand.src = 'assets/hand.png';
+                hand.className = 'hand-in-grid';
+                hand.style.gridColumn = 2;  // center-ish (1–25)
+                hand.style.gridRow = 13;     // near bottom
+                document.getElementById('gameBoard').appendChild(hand);
+
+                this.gameLoop();
+                setTimeout(() => {
+                    const wrapper = document.querySelector('.viewport-wrapper');
+                    wrapper.style.transition = 'transform 2.5s ease';
+                    wrapper.style.transformOrigin = 'left center'; // Middle-left focus
+                    wrapper.style.transform = 'scale(2.5)'; // Adjust zoom level as needed
+                }, 200);
+            }
+
+
+            returnToMenu() {
+                this.state = GAME_STATES.MENU;
+                document.getElementById('shapeMenu').style.display = 'flex';
+                document.getElementById('gameUI').style.display = 'none';
+                document.getElementById('endCard').classList.remove('show');
+            }
+
+            handleBlockClick(block) {
+                if (this.state !== GAME_STATES.PLAYING) return;
+                this.moveBlock(block);
+            }
+
+            moveBlock(block) {
+                // First, check if this click can trigger a chain reaction
+                const chainBlocks = this.findChainReactionBlocks(block);
+                
+                if (chainBlocks.length > 1) {
+                    console.log("🔗 Chain reaction triggered! Chain length:", chainBlocks.length, "blocks:", chainBlocks.map(b => b.id));
+                    // Chain reaction: trigger blocks from outermost to innermost
+                    this.executeChainReaction(chainBlocks);
+                } else {
+                    // Single block movement - now check if it can actually move
+                    this.executeSingleBlockMove(block);
+                }
+            }
+            
+            executeSingleBlockMove(block) {
+                // Check if this block can move (its forward path is clear)
+                if (!this.canBlockMove(block)) {
+                    console.log("Single block can't move:", block.id);
+                    return; // Block is blocked, can't move
+                }
+                
+                const direction = this.directions[block.direction];
+                let scanX = block.x;
+                let scanY = block.y;
+                let willExitGrid = false;
+                
+                // Find final position
+                while (true) {
+                    const nextX = scanX + direction.x;
+                    const nextY = scanY + direction.y;
+                    
+                    if (nextX < 0 || nextX >= this.gridSize || nextY < 0 || nextY >= this.gridSize) {
+                        willExitGrid = true;
+                        break;
+                    }
+                    
+                    const blockAtPosition = this.blocks.find(b => b.id !== block.id && b.x === nextX && b.y === nextY);
+                    if (blockAtPosition) {
+                        break;
+                    }
+                    
+                    scanX = nextX;
+                    scanY = nextY;
+                }
+                
+                if (willExitGrid) {
+                    this.animateBlockExit(block);
+                } else {
+                    this.animateBlockToPosition(block, scanX, scanY);
+                }
+            }
+            
+            executeChainReaction(chainBlocks) {
+                if (!chainBlocks || chainBlocks.length === 0) return;
+
+                const outermostBlock = chainBlocks[chainBlocks.length - 1];
+
+                // ✅ Only continue if the outermost block is allowed to move
+                if (!this.canBlockMove(outermostBlock)) {
+                    console.log("Chain blocked: outermost block cannot move.");
+                    return;
+                }
+
+                const blockDelayInterval = 200;
+                const executionOrder = [...chainBlocks].reverse();
+
+                executionOrder.forEach((block, index) => {
+                    setTimeout(() => {
+                        this.animateBlockExit(block);  // <== Use exit directly
+                    }, index * blockDelayInterval);
+                });
+            }
+
+
+
+            findChainReactionBlocks(triggerBlock) {
+                console.log("Finding chain for block:", triggerBlock.id, "at", triggerBlock.x, triggerBlock.y, "direction:", triggerBlock.direction);
+                const chain = [triggerBlock];
+                
+                // Get the direction vector for this block's arrow
+                const direction = this.directions[triggerBlock.direction];
+                console.log("Direction vector:", direction);
+                
+                // Start from the trigger block's position and look forward in arrow direction
+                let checkX = triggerBlock.x + direction.x;
+                let checkY = triggerBlock.y + direction.y;
+                
+                // Find ALL consecutive blocks in the arrow direction
+                while (checkX >= 0 && checkX < this.gridSize && 
+                       checkY >= 0 && checkY < this.gridSize) {
+                    
+                    console.log("Checking position:", checkX, checkY);
+                    const blockAtPosition = this.blocks.find(b => 
+                        b.x === checkX && b.y === checkY
+                    );
+                    
+                    if (blockAtPosition) {
+                        console.log("Found block at position:", blockAtPosition.id, "direction:", blockAtPosition.direction, "can move:", this.canBlockMove(blockAtPosition));
+                        // Check if this block points in the same direction (movability checked later in execution)
+                        if (blockAtPosition.direction === triggerBlock.direction) {
+                            chain.push(blockAtPosition);
+                            console.log("Added to chain:", blockAtPosition.id);
+                            // Continue checking further in the same direction
+                            checkX += direction.x;
+                            checkY += direction.y;
+                        } else {
+                            console.log("Chain breaks - different direction at block:", blockAtPosition.id);
+                            // Chain breaks if block points in different direction
+                            break;
+                        }
+                    } else {
+                        console.log("No block at position, chain ends");
+                        // No block at this position, chain ends
+                        break;
+                    }
+                }
+                
+                console.log("Final chain length:", chain.length, "blocks:", chain.map(b => b.id));
+                // Return chain if there are multiple blocks (movability checked later)
+                if (chain.length > 1) {
+                    return chain;
+                }
+                
+                return [];
+            }
+            animateBlockExit(block) {
+                const movingWrapper = document.getElementById(`block-moving-${block.id}`);
+                const blockElement = document.getElementById(`block-${block.id}`);
+                if (!movingWrapper || !blockElement) return;
+
+                const direction = this.directions[block.direction];
+                const cellSize = this.gameBoard.offsetWidth / this.gridSize;
+                const distance = 20 * cellSize;
+
+                const trail = movingWrapper.querySelector('.block-trail');
+                if (trail) trail.style.display = 'block';
+
+                trail.style.transition = 'width 1.2s ease-in-out, height 1.2s ease-in-out';
+                if (direction.x !== 0) {
+                    trail.style.width = '500%';
+                } else {
+                    trail.style.height = '500%';
+                }
+
+                movingWrapper.style.transition = 'transform 1.4s ease-in';
+                movingWrapper.style.transform = `translate(${direction.x * distance}px, ${direction.y * distance}px)`;
+
+                setTimeout(() => {
+                    movingWrapper.remove();
+                    this.blocks = this.blocks.filter(b => b.id !== block.id);
+                    this.checkLevelComplete();
+                }, 1200);
+            }
+
+
+
+
+
+
+            animateBlockToPosition(block, targetX, targetY) {
+                const blockElement = document.getElementById(`block-${block.id}`);
+                if (!blockElement) return;
+                
+                // Add moving class for smooth transition
+                blockElement.classList.add('moving');
+                
+                // Update grid position with smooth animation
+                blockElement.style.gridColumn = targetX + 1;
+                blockElement.style.gridRow = targetY + 1;
+                
+                // Update block data
+                block.x = targetX;
+                block.y = targetY;
+                
+                // Remove moving class after animation completes
+                setTimeout(() => {
+                    blockElement.classList.remove('moving');
+                }, 600);
+            }
+
+            easeOutCubic(t) {
+                return 1 - Math.pow(1 - t, 3);
+            }
+
+            checkLevelComplete() {
+                // Level is complete when all blocks are removed
+                if (this.blocks.length === 0) {
+                    this.state = GAME_STATES.COMPLETED;
+                    setTimeout(() => {
+                        document.getElementById('endCard').classList.add('show');
+                    }, 500);
+                }
+            }
+
+
+            render() {
+                if (this.state === GAME_STATES.LOADING) return;
+                
+                // Clear existing blocks from DOM
+                this.clearGameBoard();
+                
+                // Create DOM elements for all blocks
+                for (let block of this.blocks) {
+                    this.createBlockElement(block);
+                }
+                
+                // Update UI with block count
+                this.updateGameUI();
+            }
+
+            clearGameBoard() {
+                // Remove all existing block elements
+                const existingBlocks = this.gameBoard.querySelectorAll('.game-block');
+                existingBlocks.forEach(block => block.remove());
+            }
+
+            createBlockElement(block) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'block-wrapper';
+                wrapper.id = `block-wrapper-${block.id}`;
+                wrapper.style.left = `calc(${block.x} * 100% / 25)`;
+                wrapper.style.top = `calc(${block.y} * 100% / 25)`;
+
+                const dot = document.createElement('div');
+                dot.className = 'block-spot-dot';
+                wrapper.appendChild(dot);
+
+                const movingWrapper = document.createElement('div');
+                movingWrapper.className = 'block-moving-wrapper';
+                movingWrapper.id = `block-moving-${block.id}`;
+
+                const blockElement = document.createElement('div');
+                blockElement.className = 'game-block';
+                blockElement.id = `block-${block.id}`;
+                blockElement.style.position = 'relative';
+
+                const blockImg = document.createElement('img');
+                blockImg.src = `assets/block.png`;
+                blockImg.alt = 'block';
+                blockImg.style.width = '100%';
+                blockImg.style.height = '100%';
+                blockImg.style.objectFit = 'cover';
+                blockImg.style.borderRadius = '5%';
+                blockImg.style.position = 'absolute';
+                blockImg.style.top = '0';
+                blockImg.style.left = '0';
+
+                const arrowImg = document.createElement('img');
+                arrowImg.src = `assets/${block.direction}.png`;
+                arrowImg.alt = block.direction;
+                arrowImg.style.width = '50%';
+                arrowImg.style.height = '50%';
+                arrowImg.style.position = 'absolute';
+                arrowImg.style.top = '45%';
+                arrowImg.style.left = '50%';
+                arrowImg.style.transform = 'translate(-50%, -50%)';
+                arrowImg.style.pointerEvents = 'none';
+
+                blockElement.appendChild(blockImg);
+                blockElement.appendChild(arrowImg);
+                blockElement.addEventListener('click', () => {
+                    this.handleBlockClick(block);
+                });
+
+                const blockSize = this.gameBoard.offsetWidth / this.gridSize;
+                const thickness = blockSize * 0.8;
+                const offset = (blockSize - thickness) / 2;
+                const trail = document.createElement('div');
+                trail.className = 'block-trail ' + block.direction;
+                trail.style.display = 'block';
+                trail.style.overflow = 'hidden';
+                trail.style.opacity = '1';
+
+                if (block.direction === 'left') {
+                    trail.style.width = '0px';
+                    trail.style.height = `${thickness}px`;
+                    trail.style.top = `${offset}px`;
+                    trail.style.left = '100%';
+                    trail.style.background = `linear-gradient(to left, rgba(128,0,128,0), rgba(0,0,255,0.1), rgba(0,255,0,0.2), rgba(255,165,0,0.3), rgba(255,0,0,0.4))`;
+                } else if (block.direction === 'right') {
+                    trail.style.width = '0px';
+                    trail.style.height = `${thickness}px`;
+                    trail.style.top = `${offset}px`;
+                    trail.style.right = '100%';
+                    trail.style.background = `linear-gradient(to right, rgba(128,0,128,0), rgba(0,0,255,0.2), rgba(0,255,0,0.4), rgba(255,165,0,0.6), rgba(255,0,0,0.8))`;
+                } else if (block.direction === 'up') {
+                    trail.style.height = '0px';
+                    trail.style.width = `${thickness}px`;
+                    trail.style.left = `${offset}px`;
+                    trail.style.top = '100%';
+                    trail.style.background = `linear-gradient(to top, rgba(128,0,128,0), rgba(0,0,255,0.2), rgba(0,255,0,0.4), rgba(255,165,0,0.6), rgba(255,0,0,0.8))`;
+                } else if (block.direction === 'down') {
+                    trail.style.height = '0px';
+                    trail.style.width = `${thickness}px`;
+                    trail.style.left = `${offset}px`;
+                    trail.style.bottom = '100%';
+                    trail.style.background = `linear-gradient(to bottom, rgba(128,0,128,0), rgba(0,0,255,0.2), rgba(0,255,0,0.4), rgba(255,165,0,0.6), rgba(255,0,0,0.8))`;
+                }
+                movingWrapper.appendChild(trail);
+                movingWrapper.appendChild(blockElement);
+                wrapper.appendChild(movingWrapper);
+                this.gameBoard.appendChild(wrapper);
+                return blockElement;
+            }
+
+            updateGameUI() {
+                const gameUI = document.getElementById('gameUI');
+                if (this.state === GAME_STATES.PLAYING) {
+                    gameUI.style.display = 'flex';
+                }
+            }
+
+
+
+            gameLoop() {
+                // DOM-based rendering doesn't need a continuous game loop
+                // Rendering happens on-demand when game state changes
+                if (this.state === GAME_STATES.PLAYING || this.state === GAME_STATES.COMPLETED) {
+                    this.render();
+                }
+            }
+        }
+
+        // Initialize game when page loads
+        window.addEventListener('load', () => {
+            new Game();
+        });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+
+</body>
+</html>
